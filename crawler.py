@@ -11,18 +11,32 @@ class Spider:
         self.user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.96 Safari/537.36'
         self.headers = {'User-Agent' : self.user_agent }
 
-    def get_stock_num(self, product_id):
+    def get_page(self, product_id):
         url = self.url + str(product_id)
         request = urllib2.Request(url, headers = self.headers)
         try:
             response = urllib2.urlopen(request)
             page = response.read()
-            print page
+            return page
         except urllib2.URLError, e:
             print e
+            return None
 
+    def get_stock_num(self, product_id):
+        page = self.get_page(product_id)
+        if page is None:
+            print 'isNone'
+            return
+        soup = BeautifulSoup(page, "lxml")
+        print product_id
+        print soup.find('div', class_='mobile-text-margins top-ten').string
+
+    def crawler_all_product():
+        return
 
 
 if __name__ == '__main__':
     spider = Spider()
-    spider.get_stock_num(3162)
+    for id in range(3100, 3120):
+        time.sleep(5)
+        spider.get_stock_num(id)
