@@ -2,6 +2,7 @@ import urllib2
 import time
 from bs4 import BeautifulSoup
 import re
+from pymongo import *
 
 class Spider:
     def __init__(self):
@@ -41,10 +42,12 @@ class Spider:
             categorys.append(a.attrs['href'].split('/')[2])
         item_info['categorys'] = categorys
 
-        # get stcok number
+        # get stock number
         storage_div = soup.find('div', class_='mobile-text-margins top-ten')
         storage_num = 0
         if storage_div.find('div', attrs = {'itemprop' : 'availability'}) is None:
+            if storage_div.find('h2'):
+                return None
             stock_text = storage_div.string.strip().lower().split()
             if stock_text[0] == 'in':
                 storage_num = 100
@@ -56,12 +59,18 @@ class Spider:
         item_info['storage'] = storage_num
         return item_info
 
-    def crawler_all_product():
-        return
+    def crawler_all_product(self, collection):
+        for id in range(0, 3500):
+            time.sleep(2s)
+            data = self.get_stock_num(id)
+            if data != None:
+                collection.insert_one(data)
+
 
 
 if __name__ == '__main__':
     spider = Spider()
-    for id in range(4000, 4010):
-        time.sleep(2)
+    for id in range(3000, 3050):
+        time.sleep(1)
         print spider.get_stock_num(id)
+    #print spider.crawler_all_product()
