@@ -46,26 +46,35 @@ class Spider:
         storage_div = soup.find('div', class_='mobile-text-margins top-ten')
         storage_num = 0
         if storage_div.find('div', attrs = {'itemprop' : 'availability'}) is None:
+            # Discontinued
             if storage_div.find('h2'):
                 return None
             stock_text = storage_div.string.strip().lower().split()
-            if stock_text[0] == 'in':
+
+            if len(stock_text) == 0:
+                # No Stock Information
+                print "No Info"
+                return None
+            elif stock_text[0] == 'in':
+                # In Stock
                 storage_num = 100
             else:
+                # Num In Stock
                 storage_num = int(stock_text[0])
         else:
-            storage_num = 0;
+            # Out of Stock
+            storage_num = 0
 
         item_info['storage'] = storage_num
         return item_info
 
     def crawler_all_product(self, collection):
         for id in range(0, 3500):
-            time.sleep(2s)
+            print id
+            time.sleep(1)
             data = self.get_stock_num(id)
             if data != None:
                 collection.insert_one(data)
-
 
 
 if __name__ == '__main__':

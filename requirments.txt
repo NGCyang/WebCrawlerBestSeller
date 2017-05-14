@@ -1,0 +1,5 @@
+flask
+pymongo
+urllib2
+bs4
+bson
