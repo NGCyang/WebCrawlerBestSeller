@@ -6,14 +6,15 @@ from pymongo import *
 
 class Spider:
     def __init__(self):
-        self.url = 'https://www.adafruit.com/product/'
+        self.collection = None
+        self.url = 'https://www.adafruit.com/'
 
         #self.product_id = 3162
         self.user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.96 Safari/537.36'
         self.headers = {'User-Agent' : self.user_agent }
 
     def get_page(self, product_id):
-        url = self.url + str(product_id)
+        url = self.url + 'product/' +str(product_id)
         request = urllib2.Request(url, headers = self.headers)
         try:
             response = urllib2.urlopen(request)
@@ -76,10 +77,113 @@ class Spider:
             if data != None:
                 collection.insert_one(data)
 
+    def get_category_page(self, category_id):
+        time.sleep(3)
+        url = self.url + 'category/' +str(category_id)
+        request = urllib2.Request(url, headers = self.headers)
+        try:
+            response = urllib2.urlopen(request)
+            page = response.read()
+            return page
+        except urllib2.URLError, e:
+            print e
+            return None
+
+    def get_from_category_entry(self,):
+        url = self.url + "categories"
+        request = urllib2.Request(url, headers = self.headers)
+        try:
+            response = urllib2.urlopen(request)
+            page = response.read()
+            soup = BeautifulSoup(page, "lxml")
+            for h3 in soup.find_all('h3'):
+                # print h3
+                # print h3.find('a', href=re.compile("^category/"))
+                a = h3.find('a', href=re.compile("^category/"))
+                if a is None:
+                    continue
+                else:
+                    category_id = a.attrs['href'].split('/')[1]
+                    get_stock_num_from_categories(category_id)
+        except urllib2.URLError, e:
+            print e
+            return
+
+
+    def get_stock_num_from_categories(self,category_id):
+        page = self.get_category_page(category_id)
+        soup = BeautifulSoup(page, "lxml")
+        product_list = soup.find('div', id='productListing')
+        for row in product_list.find_all('div', class_='row product-listing'):
+            item_info = {}
+            item_info['categories'] = [category_id]
+            product_a = row.find('a', href=re.compile("^/product/"))
+            item_info['product_name'] = product_a.attrs['data-name']
+            item_info['product_id'] = product_a.attrs['data-pid']
+            # id_div = row.find('div', class_='product_id')
+            # item_info['product_id'] = int(id_div.find('span').string)
+            price_span = row.find('span', attrs={'itemprop' : 'price'})
+            if price_span != None:
+                item_info['price'] = float(price_span.string)
+            else:
+                item_info['price'] = None
+
+            stock_span = row.find('span', attrs={'itemprop' : 'availability'})
+            if stock_span == None:
+                #stock_string = None
+                continue
+            elif stock_span.string.strip().lower() == 'discontinued':
+                continue
+            else:
+                stock_string = stock_span.string
+
+            item_info['storage'] = self.get_num_from_string(stock_string)
+            self.update_in_database(item_info)
+            # print item_info
+
+
+    def update_in_database(self, item_info):
+        original_info = collection.find_one({"product_id" : item_info['product_id']})
+        if original_info == None:
+            collection.insert_one(item_info)
+        else:
+            # for category_id in original_info['categories']:
+            #     item_info['categories'].append(category_id)
+            collection.update_one(
+                    { 'product_id' : item_info['product_id']},
+                    {"$set": {
+                            #"categories":item_info['categories'],
+                            "storage":item_info['storage']
+                    }})
+
+    def set_datebase(self, collection):
+        self.collection = collection
+
+    def get_num_from_string(self, string):
+        stock_text = string.strip().lower().split()
+        if stock_text[0] == 'in':
+            # In Stock
+            return 100
+        elif stock_text[0] == 'out':
+            # Out of Stock
+            return 0
+        else:
+            # Num in stock
+            return int(stock_text[0])
+
 
 if __name__ == '__main__':
+    client = MongoClient('localhost', 27017)
+    db = client.crawler
+    collection = db.storage_test
     spider = Spider()
-    for id in range(3000, 3050):
-        time.sleep(1)
-        print spider.get_stock_num(id)
+    spider.set_datebase(collection)
+    #spider.get_category_entry()
+    #spider.get_stock_num_from_categories(17)
+    print collection.find_one()
+
+
+    # for id in range(3000, 3050):
+    #     time.sleep(1)
+    #     print spider.get_stock_num(id)
     #print spider.crawler_all_product()
