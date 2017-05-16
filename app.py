@@ -24,12 +24,11 @@ Intital
 '''
 @app.before_first_request
 def start_crawler():
-    #collection.remove()
     spider.get_from_category_entry()
-    daily_crawler()
+    #daily_crawler()
 
 def daily_crawler():
-    #spider.get_from_category_entry()
+    spider.get_from_category_entry()
     x = datetime.today()
     y = x.replace(day=x.day+1, hour=1, minute=0, second=0, microsecond=0)
     delta_t = y-x
