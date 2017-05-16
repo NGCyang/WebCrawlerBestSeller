@@ -29,11 +29,12 @@ The application will running on Running on http://0.0.0.0:5000/
 
   ```
     Examples:
+    
       - http://0.0.0.0:5000/bestseller
       - http://0.0.0.0:5000/bestseller/page3
       - http://0.0.0.0:5000/bestseller/page3?lower_price=15.0&upper_price=30.0
 
- 
+
 
   - Get the best seller from the entire website.
   - Return a json contains an array of at most 20 products.
