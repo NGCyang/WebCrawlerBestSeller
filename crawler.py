@@ -36,12 +36,12 @@ class Spider:
         # get product name
         item_info['product_name'] = soup.find('h1', attrs={'itemprop' : 'name'}).string
 
-        # get all categorys
+        # get all categories
         breadcrumbs_div = soup.find('div', class_='breadcrumbs')
-        categorys = []
+        categories = []
         for a in breadcrumbs_div.find_all('a', href=re.compile("/category/")):
-            categorys.append(a.attrs['href'].split('/')[2])
-        item_info['categorys'] = categorys
+            categories.append(a.attrs['href'].split('/')[2])
+        item_info['categories'] = categories
 
         # get stock number
         storage_div = soup.find('div', class_='mobile-text-margins top-ten')
@@ -78,7 +78,8 @@ class Spider:
                 collection.insert_one(data)
 
     def get_category_page(self, category_id):
-        time.sleep(3)
+        print category_id
+        time.sleep(1)
         url = self.url + 'category/' +str(category_id)
         request = urllib2.Request(url, headers = self.headers)
         try:
@@ -97,14 +98,12 @@ class Spider:
             page = response.read()
             soup = BeautifulSoup(page, "lxml")
             for h3 in soup.find_all('h3'):
-                # print h3
-                # print h3.find('a', href=re.compile("^category/"))
                 a = h3.find('a', href=re.compile("^category/"))
                 if a is None:
                     continue
                 else:
-                    category_id = a.attrs['href'].split('/')[1]
-                    get_stock_num_from_categories(category_id)
+                    category_id = int(a.attrs['href'].split('/')[1])
+                    self.get_stock_num_from_categories(category_id)
         except urllib2.URLError, e:
             print e
             return
@@ -124,7 +123,7 @@ class Spider:
             # item_info['product_id'] = int(id_div.find('span').string)
             price_span = row.find('span', attrs={'itemprop' : 'price'})
             if price_span != None:
-                item_info['price'] = float(price_span.string)
+                item_info['price'] = float(price_span.string.replace(',', ''))
             else:
                 item_info['price'] = None
 
@@ -133,6 +132,8 @@ class Spider:
                 #stock_string = None
                 continue
             elif stock_span.string.strip().lower() == 'discontinued':
+                continue
+            elif stock_span.string.strip().lower() == 'coming soon':
                 continue
             else:
                 stock_string = stock_span.string
@@ -143,17 +144,23 @@ class Spider:
 
 
     def update_in_database(self, item_info):
-        original_info = collection.find_one({"product_id" : item_info['product_id']})
+        original_info = self.collection.find_one({"product_id" : item_info['product_id']})
         if original_info == None:
-            collection.insert_one(item_info)
+            self.collection.insert_one(item_info)
         else:
             # for category_id in original_info['categories']:
             #     item_info['categories'].append(category_id)
-            collection.update_one(
+            categories_set = set()
+            for category in item_info['categories']:
+                categories_set.add(category)
+            for category in original_info['categories']:
+                categories_set.add(int(category))
+            self.collection.update_one(
                     { 'product_id' : item_info['product_id']},
                     {"$set": {
-                            #"categories":item_info['categories'],
-                            "storage":item_info['storage']
+                            "categories":list(categories_set),
+                            "storage":item_info['storage'],
+                            "price":item_info['price']
                     }})
 
     def set_datebase(self, collection):
@@ -176,11 +183,14 @@ if __name__ == '__main__':
     client = MongoClient('localhost', 27017)
     db = client.crawler
     collection = db.storage_test
-    spider = Spider()
-    spider.set_datebase(collection)
-    #spider.get_category_entry()
-    #spider.get_stock_num_from_categories(17)
-    print collection.find_one()
+
+    print collection.count()
+    # spider = Spider()
+    # spider.set_datebase(collection)
+    # #spider.get_category_entry()
+    # spider.get_stock_num_from_categories(851)
+    # for item in collection.find().limit(20):
+    #     print item
 
 
     # for id in range(3000, 3050):

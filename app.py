@@ -5,6 +5,9 @@ from flask import Flask, json, request
 from crawler import Spider
 from bson import json_util
 import sys
+from datetime import datetime
+from threading import Timer
+
 
 app = Flask(__name__)
 
@@ -13,16 +16,27 @@ db = client.crawler
 #collection = db.storage
 collection = db.storage_test
 
+spider = Spider()
+spider.set_datebase(collection)
+
 '''
 Intital
 '''
-# @app.before_first_request
-# def start_crawler():
-#     collection.remove()
-#     spider = Spider()
-#     spider.crawler_all_product(collection)
+@app.before_first_request
+def start_crawler():
+    #collection.remove()
+    spider.get_from_category_entry()
+    daily_crawler()
 
-#def daily_crawler(spider):
+def daily_crawler():
+    #spider.get_from_category_entry()
+    x = datetime.today()
+    y = x.replace(day=x.day+1, hour=1, minute=0, second=0, microsecond=0)
+    delta_t = y-x
+    secs = delta_t.seconds+1
+    t = Timer(secs, daily_crawler)
+    t.start()
+
 
 '''
 Routing
